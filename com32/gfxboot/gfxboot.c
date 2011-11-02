@@ -818,7 +818,7 @@ void boot(int index)
 {
   char *arg, *alt_kernel;
   menu_t *menu_ptr;
-  int i, label_len;
+  int i, label_len, menu_label_len;
   unsigned ipapp;
   const struct syslinux_ipappend_strings *ipappend;
   char *gfxboot_cwd = (char *) gfx_config.gfxboot_cwd;
@@ -836,17 +836,21 @@ void boot(int index)
   if(!menu_ptr || !menu_ptr->menu_label) return;
 
   arg = skipspace(cmdline);
-  label_len = strlen(menu_ptr->menu_label);
+  label_len = strlen(menu_ptr->label);
+  menu_label_len = strlen(menu_ptr->menu_label);
 
   // if it does not start with label string, assume first word is kernel name
-  if(strncmp(arg, menu_ptr->menu_label, label_len)) {
+  if(!strncmp(arg, menu_ptr->label, label_len)) {
+    arg += label_len;
+  }
+  else if(!strncmp(arg, menu_ptr->menu_label, menu_label_len)) {
+    arg += menu_label_len;
+  }
+  else {
     alt_kernel = arg;
     arg = skip_nonspaces(arg);
     if(*arg) *arg++ = 0;
     if(*alt_kernel) menu_ptr->alt_kernel = alt_kernel;
-  }
-  else {
-    arg += label_len;
   }
 
   arg = skipspace(arg);
