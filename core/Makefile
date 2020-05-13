@@ -140,7 +140,7 @@ LDSCRIPT = $(SRC)/bios/syslinux.ld
 NASM_ELF = elf
 
 %.elf: %.o %-c.o lib%.a $(LIBDEP) $(LDSCRIPT)
-	$(LD) $(LDFLAGS) -pie -Bsymbolic \
+	$(LD) $(LDFLAGS) -z muldefs -pie -Bsymbolic \
 		-T $(LDSCRIPT) \
 		--unresolved-symbols=report-all \
 		-E --hash-style=gnu -M -o $@ $< $*-c.o \
