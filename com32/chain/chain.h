@@ -21,7 +21,7 @@
 struct data_area {
     void *data;
     addr_t base;
-    addr_t size;
+    size_t size;
 };
 
 #endif
