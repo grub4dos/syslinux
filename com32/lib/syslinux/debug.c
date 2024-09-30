@@ -1,6 +1,7 @@
 #include <linux/list.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #ifdef DYNAMIC_DEBUG
 
