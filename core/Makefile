@@ -98,7 +98,7 @@ CFLAGS += -D__SYSLINUX_CORE__ -D__FIRMWARE_$(FIRMWARE)__ \
 # official release.  Otherwise, substitute a hex string that is pretty much
 # guaranteed to be unique to be unique from build to build.
 ifndef HEXDATE
-HEXDATE := $(shell $(PERL) $(SRC)/../now.pl $(SRCS))
+HEXDATE := $(shell printf '0x%x\n' $(git log -1 --format=%ct)) # make the build more predictable
 endif
 ifndef DATE
 DATE    := $(shell sh $(SRC)/../gen-id.sh $(VERSION) $(HEXDATE))

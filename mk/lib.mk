@@ -58,8 +58,8 @@ CFLAGS += -mregparm=3 -DREGPARM=3
 endif
 
 ARCH_MATH_OBJS = \
-	$(patsubst $(com32)/lib/%.c,%.o,$(wildcard $(com32)/lib/$(ARCH)/math/*.c)) \
-	$(patsubst $(com32)/lib/%.S,%.o,$(wildcard $(com32)/lib/$(ARCH)/math/*.S))
+	$(patsubst $(com32)/lib/%.c,%.o,$(sort $(wildcard $(com32)/lib/$(ARCH)/math/*.c))) \
+	$(patsubst $(com32)/lib/%.S,%.o,$(sort $(wildcard $(com32)/lib/$(ARCH)/math/*.S)))
 
 VPATH = $(SRC)
 LIBOTHER_OBJS = \
@@ -130,8 +130,8 @@ LIBENTRY_OBJS = \
 	exit.o
 
 LIBGCC_OBJS = \
-	  $(patsubst $(com32)/lib/%.c,%.o,$(wildcard $(com32)/lib/$(ARCH)/libgcc/*.c)) \
-	  $(patsubst $(com32)/lib/%.S,%.o,$(wildcard $(com32)/lib/$(ARCH)/libgcc/*.S))
+	  $(patsubst $(com32)/lib/%.c,%.o,$(sort $(wildcard $(com32)/lib/$(ARCH)/libgcc/*.c))) \
+	  $(patsubst $(com32)/lib/%.S,%.o,$(sort $(wildcard $(com32)/lib/$(ARCH)/libgcc/*.S)))
 
 LIBCONSOLE_OBJS = \
 	\
