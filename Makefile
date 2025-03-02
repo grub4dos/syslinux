@@ -15,7 +15,7 @@
 # Main Makefile for SYSLINUX
 #
 
-all_firmware := bios efi32 efi64
+all_firmware := bios
 
 #
 # topdir is only set when we are doing a recursive make. Do a bunch of
@@ -136,21 +136,13 @@ include $(MAKEDIR)/syslinux.mk
 # directories.
 #
 
-ifeq ($(FWCLASS),BIOS)
+
 MODULES = memdisk/memdisk \
 	com32/menu/*.c32 com32/modules/*.c32 com32/mboot/*.c32 \
 	com32/hdt/*.c32 com32/rosh/*.c32 com32/gfxboot/*.c32 \
 	com32/sysdump/*.c32 com32/lua/src/*.c32 com32/chain/*.c32 \
 	com32/lib/*.c32 com32/libutil/*.c32 com32/gpllib/*.c32 \
 	com32/elflink/ldlinux/*.c32 com32/cmenu/libmenu/*.c32
-else
-# FIXME: Prune other BIOS-centric modules
-MODULES = com32/menu/*.c32 com32/modules/*.c32 com32/mboot/*.c32 \
-	com32/hdt/*.c32 com32/rosh/*.c32 com32/gfxboot/*.c32 \
-	com32/sysdump/*.c32 com32/lua/src/*.c32 com32/chain/*.c32 \
-	com32/lib/*.c32 com32/libutil/*.c32 com32/gpllib/*.c32 \
-	com32/cmenu/libmenu/*.c32 com32/elflink/ldlinux/$(LDLINUX)
-endif
 
 export FIRMWARE FWCLASS ARCH BITS
 
@@ -175,17 +167,6 @@ BOBJECTS = $(BTARGET) \
 # Note: libinstaller is both a BSUBDIR and an ISUBDIR.  It contains
 # files that depend only on the B phase, but may have to be regenerated
 # for "make installer".
-
-ifeq ($(FWCLASS),EFI)
-
-BSUBDIRS = codepage com32 lzo core mbr sample efi txt
-ISUBDIRS =
-
-INSTALLSUBDIRS = efi
-
-NETINSTALLABLE = efi/syslinux.efi $(INSTALLABLE_MODULES)
-
-else
 
 BSUBDIRS = codepage com32 lzo core memdisk mbr sample \
 	   diag libinstaller dos win32 win64 dosutil txt
@@ -218,8 +199,6 @@ EXTBOOTINSTALL = $(INSTALLABLE_MODULES)
 # Things to install in /tftpboot
 NETINSTALLABLE = core/pxelinux.0 core/lpxelinux.0 \
 		 $(INSTALLABLE_MODULES)
-
-endif # ifeq ($(FWCLASS),EFI)
 
 .PHONY: subdirs $(BSUBDIRS) $(ISUBDIRS) test
 
@@ -259,22 +238,6 @@ bios:
 		FIRMWARE=BIOS FWCLASS=BIOS \
 		ARCH=i386 LDLINUX=ldlinux.c32 $(MAKECMDGOALS)
 
-efi32:
-	@mkdir -p $(OBJ)/efi32
-	$(MAKE) -C $(OBJ)/efi32 -f $(SRC)/Makefile SRC="$(SRC)" \
-		objdir=$(OBJ)/efi32 OBJ=$(OBJ)/efi32 \
-		ARCH=i386 BITS=32 LDLINUX=ldlinux.e32 \
-		FIRMWARE=EFI32 FWCLASS=EFI \
-		$(MAKECMDGOALS)
-
-efi64:
-	@mkdir -p $(OBJ)/efi64
-	$(MAKE) -C $(OBJ)/efi64 -f $(SRC)/Makefile SRC="$(SRC)" \
-		objdir=$(OBJ)/efi64 OBJ=$(OBJ)/efi64 \
-		ARCH=x86_64 BITS=64 LDLINUX=ldlinux.e64 \
-		FIRMWARE=EFI64 FWCLASS=EFI \
-		$(MAKECMDGOALS)
-
 else # FIRMWARE
 
 all: all-local subdirs
@@ -304,7 +267,6 @@ dos extlinux linux mtools win32 win64: libinstaller
 libinstaller: core
 utils: mbr
 core: com32
-efi: core
 
 installer: installer-local
 	set -e; for i in $(ISUBDIRS); \
@@ -342,31 +304,14 @@ local-install: installer
 	: mkdir -m 755 -p $(INSTALLROOT)$(MANDIR)/man8
 	: install -m 644 -c man/*.8 $(INSTALLROOT)$(MANDIR)/man8
 
-ifneq ($(FWCLASS),EFI)
 install: local-install
 	set -e ; for i in $(INSTALLSUBDIRS) ; \
 		do $(MAKE) -C $$i SRC="$(SRC)/$$i" OBJ="$(OBJ)/$$i" \
 		-f $(SRC)/$$i/Makefile $@; done
-else
-install:
-	mkdir -m 755 -p $(INSTALLROOT)$(AUXDIR)/efi$(BITS)
-	set -e ; for i in $(INSTALLSUBDIRS) ; \
-		do $(MAKE) -C $$i SRC="$(SRC)/$$i" OBJ="$(OBJ)/$$i" \
-		BITS="$(BITS)" AUXDIR="$(AUXDIR)/efi$(BITS)" \
-		-f $(SRC)/$$i/Makefile $@; done
-	-install -m 644 $(INSTALLABLE_MODULES) $(INSTALLROOT)$(AUXDIR)/efi$(BITS)
-	install -m 644 com32/elflink/ldlinux/$(LDLINUX) $(INSTALLROOT)$(AUXDIR)/efi$(BITS)
-endif
 
-ifeq ($(FWCLASS),EFI)
-netinstall:
-	mkdir -p $(INSTALLROOT)$(TFTPBOOT)/efi$(BITS)
-	install -m 644 $(NETINSTALLABLE) $(INSTALLROOT)$(TFTPBOOT)/efi$(BITS)
-else
 netinstall: installer
 	mkdir -p $(INSTALLROOT)$(TFTPBOOT)
 	install -m 644 $(NETINSTALLABLE) $(INSTALLROOT)$(TFTPBOOT)
-endif
 
 extbootinstall: installer
 	mkdir -m 755 -p $(INSTALLROOT)$(EXTLINUXDIR)
