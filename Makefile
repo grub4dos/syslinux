@@ -146,61 +146,17 @@ MODULES = memdisk/memdisk \
 
 export FIRMWARE FWCLASS ARCH BITS
 
-# List of module objects that should be installed for all derivatives
-INSTALLABLE_MODULES = $(MODULES)
-
-# syslinux.exe is BTARGET so as to not require everyone to have the
-# mingw suite installed
 BTARGET  = version.gen version.h $(OBJDIR)/version.mk
 BOBJECTS = $(BTARGET) \
-	mbr/*.bin \
 	core/pxelinux.0 core/lpxelinux.0 \
 	core/isolinux.bin core/isolinux-debug.bin \
-	dos/syslinux.com \
-	win32/syslinux.exe win64/syslinux64.exe \
-	dosutil/*.com dosutil/*.sys \
 	$(MODULES)
 
 # BSUBDIRs build the on-target binary components.
-# ISUBDIRs build the installer (host) components.
-#
-# Note: libinstaller is both a BSUBDIR and an ISUBDIR.  It contains
-# files that depend only on the B phase, but may have to be regenerated
-# for "make installer".
 
-BSUBDIRS = codepage com32 lzo core memdisk mbr sample \
-	   diag libinstaller dos win32 win64 dosutil txt
+BSUBDIRS = codepage com32 lzo core memdisk
 
-ITARGET  =
-IOBJECTS = $(ITARGET) \
-	utils/gethostip utils/isohybrid utils/mkdiskimage \
-	mtools/syslinux linux/syslinux extlinux/extlinux
-ISUBDIRS = libinstaller mtools linux extlinux utils
-
-# Things to install in /usr/bin
-INSTALL_BIN   =	mtools/syslinux
-# Things to install in /sbin
-INSTALL_SBIN  = extlinux/extlinux
-# Things to install in /usr/lib/syslinux
-INSTALL_AUX   =	core/pxelinux.0 \
-		core/isolinux.bin core/isolinux-debug.bin \
-		dos/syslinux.com core/lpxelinux.0 \
-		mbr/*.bin $(INSTALLABLE_MODULES)
-INSTALL_AUX_OPT = win32/syslinux.exe win64/syslinux64.exe
-INSTALL_DIAG  =	diag/mbr/handoff.bin \
-		diag/geodsp/geodsp1s.img.xz diag/geodsp/geodspms.img.xz
-
-# These directories manage their own installables
-INSTALLSUBDIRS = com32 utils dosutil
-
-# Things to install in /boot/extlinux
-EXTBOOTINSTALL = $(INSTALLABLE_MODULES)
-
-# Things to install in /tftpboot
-NETINSTALLABLE = core/pxelinux.0 core/lpxelinux.0 \
-		 $(INSTALLABLE_MODULES)
-
-.PHONY: subdirs $(BSUBDIRS) $(ISUBDIRS) test
+.PHONY: subdirs $(BSUBDIRS) test
 
 ifeq ($(FIRMWARE),)
 
@@ -209,20 +165,14 @@ firmware = $(all_firmware)
 # If no firmware was specified the rest of MAKECMDGOALS applies to all
 # firmware.
 ifeq ($(filter $(firmware),$(MAKECMDGOALS)),)
-all strip tidy clean dist install installer netinstall: $(all_firmware)
+all tidy clean dist: $(all_firmware)
 
 else
 
 # Don't do anything for the rest of MAKECMDGOALS at this level. It
 # will be handled for each of $(firmware).
-strip tidy clean dist install installer netinstall:
+tidy clean dist:
 
-endif
-
-# Convert 'make bios strip' to 'make strip', etc for rest of the Makefiles.
-MAKECMDGOALS := $(filter-out $(firmware),$(MAKECMDGOALS))
-ifeq ($(MAKECMDGOALS),)
-	MAKECMDGOALS += all
 endif
 
 #
@@ -242,16 +192,11 @@ else # FIRMWARE
 
 all: all-local subdirs
 
-all-local: $(BTARGET) $(ITARGET)
-	-ls -l $(BOBJECTS) $(IOBJECTS)
-subdirs: $(BSUBDIRS) $(ISUBDIRS)
+all-local: $(BTARGET)
+	-ls -l $(BOBJECTS)
+subdirs: $(BSUBDIRS)
 
-$(sort $(ISUBDIRS) $(BSUBDIRS)):
-	@mkdir -p $@
-	$(MAKE) -C $@ SRC="$(SRC)/$@" OBJ="$(OBJ)/$@" \
-		-f $(SRC)/$@/Makefile $(MAKECMDGOALS)
-
-$(ITARGET):
+$(sort $(BSUBDIRS)):
 	@mkdir -p $@
 	$(MAKE) -C $@ SRC="$(SRC)/$@" OBJ="$(OBJ)/$@" \
 		-f $(SRC)/$@/Makefile $(MAKECMDGOALS)
@@ -263,61 +208,12 @@ $(BINFILES):
 
 #
 # List the dependencies to help out parallel builds.
-dos extlinux linux mtools win32 win64: libinstaller
-libinstaller: core
-utils: mbr
 core: com32
-
-installer: installer-local
-	set -e; for i in $(ISUBDIRS); \
-		do $(MAKE) -C $$i SRC="$(SRC)/$$i" OBJ="$(OBJ)/$$i" \
-		-f $(SRC)/$$i/Makefile all; done
-
-
-installer-local: $(ITARGET) $(BINFILES)
-
-strip: strip-local
-	set -e; for i in $(ISUBDIRS); \
-		do $(MAKE) -C $$i SRC="$(SRC)/$$i" OBJ="$(OBJ)/$$i" \
-		-f $(SRC)/$$i/Makefile strip; done
-	-ls -l $(BOBJECTS) $(IOBJECTS)
-
-strip-local:
 
 version.gen: $(topdir)/version $(topdir)/version.pl
 	$(PERL) $(topdir)/version.pl $< $@ '%define < @'
 version.h: $(topdir)/version $(topdir)/version.pl
 	$(PERL) $(topdir)/version.pl $< $@ '#define < @'
-
-local-install: installer
-	mkdir -m 755 -p $(INSTALLROOT)$(BINDIR)
-	install -m 755 -c $(INSTALL_BIN) $(INSTALLROOT)$(BINDIR)
-	mkdir -m 755 -p $(INSTALLROOT)$(SBINDIR)
-	install -m 755 -c $(INSTALL_SBIN) $(INSTALLROOT)$(SBINDIR)
-	mkdir -m 755 -p $(INSTALLROOT)$(AUXDIR)
-	install -m 644 -c $(INSTALL_AUX) $(INSTALLROOT)$(AUXDIR)
-	-install -m 644 -c $(INSTALL_AUX_OPT) $(INSTALLROOT)$(AUXDIR)
-	mkdir -m 755 -p $(INSTALLROOT)$(DIAGDIR)
-	install -m 644 -c $(INSTALL_DIAG) $(INSTALLROOT)$(DIAGDIR)
-	mkdir -m 755 -p $(INSTALLROOT)$(MANDIR)/man1
-	install -m 644 -c $(topdir)/man/*.1 $(INSTALLROOT)$(MANDIR)/man1
-	: mkdir -m 755 -p $(INSTALLROOT)$(MANDIR)/man8
-	: install -m 644 -c man/*.8 $(INSTALLROOT)$(MANDIR)/man8
-
-install: local-install
-	set -e ; for i in $(INSTALLSUBDIRS) ; \
-		do $(MAKE) -C $$i SRC="$(SRC)/$$i" OBJ="$(OBJ)/$$i" \
-		-f $(SRC)/$$i/Makefile $@; done
-
-netinstall: installer
-	mkdir -p $(INSTALLROOT)$(TFTPBOOT)
-	install -m 644 $(NETINSTALLABLE) $(INSTALLROOT)$(TFTPBOOT)
-
-extbootinstall: installer
-	mkdir -m 755 -p $(INSTALLROOT)$(EXTLINUXDIR)
-	install -m 644 $(EXTBOOTINSTALL) $(INSTALLROOT)$(EXTLINUXDIR)
-
-install-all: install netinstall extbootinstall
 
 local-tidy:
 	rm -f *.o *.elf *_bin.c stupid.* patch.offset
